@@ -1,0 +1,37 @@
+name: build-from-zip
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unzip project
+        run: |
+          ZIP=$(ls *.zip | head -n1)
+          echo "Using $ZIP"
+          mkdir work
+          unzip -q "$ZIP" -d work
+          DIR=$(dirname "$(find work -name build.gradle | head -n1)")
+          echo "PROJECT_DIR=$DIR" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.10.2
+
+      - name: Build
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: gradle build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: purpur-export
+          path: ${{ env.PROJECT_DIR }}/build/libs/*.jar
